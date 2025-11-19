@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect } from 'react'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 
-type Theme = 'light' | 'dark'
+type Theme = 'light'
 
 type ThemeContextType = {
   theme: Theme
@@ -11,16 +11,14 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType>({ theme: 'light', toggle: () => {} })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useLocalStorage<Theme>('theme', 'light')
-
+  // Force light theme only
   useEffect(() => {
     const root = document.documentElement
-    if (theme === 'dark') root.classList.add('dark')
-    else root.classList.remove('dark')
-  }, [theme])
+    root.classList.remove('dark')
+  }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle: () => setTheme(theme === 'light' ? 'dark' : 'light') }}>
+    <ThemeContext.Provider value={{ theme: 'light', toggle: () => {} }}>
       {children}
     </ThemeContext.Provider>
   )

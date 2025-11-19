@@ -7,8 +7,36 @@ import { addItemsBatch } from '@/hooks/useFirestore'
 import * as React from 'react'
 import * as XLSX from 'xlsx'
 import { useToast } from '@/context/ToastContext'
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 export default function UploadPage() {
+    const [showHelp, setShowHelp] = React.useState(false)
+    const [company, setCompany] = React.useState('')
+    const [batch, setBatch] = React.useState('')
+    const [role, setRole] = React.useState('')
+    React.useEffect(() => {
+      if (localStorage.getItem('uploadHelpSeen') !== '1') {
+        setShowHelp(true)
+      }
+    }, [])
+    const acknowledgeHelp = () => {
+      localStorage.setItem('uploadHelpSeen','1')
+      setShowHelp(false)
+    }
+    const downloadTemplate = () => {
+      const headers = ['name','email','phone','college','status','currentRound','resumeUrl']
+      const csv = headers.join(',') + '\n'
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'candidate_template.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(()=> URL.revokeObjectURL(url), 3000)
+    }
     const getAutoMapping = (head: string[]) => {
       const map: Record<string, string> = {}
       const canonical: Record<string, string> = {
@@ -76,6 +104,10 @@ export default function UploadPage() {
         toast({ title: 'Nothing to import', description: 'Upload a CSV/XLSX with at least one data row.', variant: 'destructive' })
         return
       }
+      if (!company || !batch || !role) {
+        toast({ title: 'Missing details', description: 'Please fill company, batch, and role before importing.', variant: 'destructive' })
+        return
+      }
       
       // remove undefined values and trim strings
       const sanitize = (obj: Record<string, any>) => {
@@ -110,6 +142,9 @@ export default function UploadPage() {
           status: record['status'] || 'Applied',
           currentRound: record['currentRound'] || 'Aptitude',
           resumeUrl: record['resumeUrl'] || record['Resume'] || record['Resume Link'] || record['resume'] || '',
+          company,
+          batch,
+          role,
         }
         const clean = sanitize(candidateDoc)
         items.push(clean)
@@ -125,6 +160,27 @@ export default function UploadPage() {
 
   return (
     <PageContainer>
+      <div className="mb-4 flex flex-col gap-3 rounded-xl border p-4">
+        <div className="text-lg font-semibold">Import Details</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <div className="mb-1 text-sm">Company</div>
+            <Input placeholder="e.g., ACME Corp" value={company} onChange={(e: React.ChangeEvent<HTMLInputElement>)=> setCompany(e.target.value)} />
+          </div>
+          <div>
+            <div className="mb-1 text-sm">Batch</div>
+            <Input placeholder="e.g., 2025" value={batch} onChange={(e: React.ChangeEvent<HTMLInputElement>)=> setBatch(e.target.value)} />
+          </div>
+          <div>
+            <div className="mb-1 text-sm">Role</div>
+            <Input placeholder="e.g., SDE Intern" value={role} onChange={(e: React.ChangeEvent<HTMLInputElement>)=> setRole(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={()=> setShowHelp(true)}>How to format your sheet</Button>
+          <Button variant="outline" onClick={downloadTemplate}>Download sample CSV</Button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>Upload Sheet</CardTitle></CardHeader>
@@ -183,6 +239,28 @@ export default function UploadPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showHelp} onOpenChange={setShowHelp}>
+        <DialogHeader><DialogTitle>Sheet Format Instructions</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p>Supported files: .csv, .xlsx</p>
+          <p>Recommended headers (case-insensitive):</p>
+          <ul className="list-inside list-disc">
+            <li>name</li>
+            <li>email</li>
+            <li>phone</li>
+            <li>college</li>
+            <li>status (default: Applied)</li>
+            <li>currentRound (default: Aptitude)</li>
+            <li>resumeUrl (optional)</li>
+          </ul>
+          <p>You can map your sheet columns to these fields on the right. During import, we will also tag each candidate with the Company, Batch, and Role you entered above.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={()=> setShowHelp(false)}>Close</Button>
+          <Button onClick={acknowledgeHelp}>Don't show again</Button>
+        </DialogFooter>
+      </Dialog>
     </PageContainer>
   )
 }
