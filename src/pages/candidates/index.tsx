@@ -6,7 +6,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { type Candidate } from '@/types'
 import { StatusBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useCollection } from '@/hooks/useFirestore'
 import { where } from 'firebase/firestore'
@@ -24,6 +24,7 @@ function paramsToFilters(sp: URLSearchParams) {
 
 export default function CandidatesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
   const [filters, setFilters] = React.useState(() => paramsToFilters(searchParams))
   const navigate = useNavigate()
   const { data: candidates, loading } = useCollection<Candidate>('candidates')
@@ -43,14 +44,14 @@ export default function CandidatesPage() {
   }), [candidates, filters, blSet])
 
   const columns = React.useMemo<ColumnDef<Candidate>[]>(() => [
-    { header: 'Name', accessorKey: 'name', cell: ({ row }) => <button className="text-blue-600" onClick={()=>navigate(`/candidate/${row.original.id}`)}>{row.original.name}</button> },
+    { header: 'Name', accessorKey: 'name', cell: ({ row }) => <Link className="text-blue-600 underline-offset-2 hover:underline" to={`/candidate/${row.original.id}`}>{row.original.name}</Link> },
     { header: 'Company', accessorKey: 'company' as any },
     { header: 'Role', accessorKey: 'role' as any },
     { header: 'College', accessorKey: 'college' },
     { header: 'Email', accessorKey: 'email' },
     { header: 'Current Round', accessorKey: 'currentRound' },
     { header: 'Status', accessorKey: 'status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
-    { header: 'Actions', enableSorting: false as any, cell: ({ row }) => <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={()=>navigate(`/candidate/${row.original.id}`)}>View</Button></div> }
+    { header: 'Actions', enableSorting: false as any, cell: ({ row }) => <div className="flex gap-2"><Link to={`/candidate/${row.original.id}`} className="rounded-2xl border px-3 py-1.5 text-sm hover:bg-[hsl(var(--muted))]">View</Link></div> }
   ], [navigate])
 
   const uniqueColleges = Array.from(new Set((candidates || []).map((c: Candidate)=>c.college))).filter(Boolean) as string[]
@@ -59,6 +60,7 @@ export default function CandidatesPage() {
   const uniqueRoles = Array.from(new Set((candidates || []).map((c: any)=>c.role))).filter(Boolean) as string[]
   // Keep URL in sync with filters so views are shareable
   React.useEffect(() => {
+    if (location.pathname !== '/candidates') return
     const sp = new URLSearchParams()
     if (filters.query) sp.set('q', filters.query)
     if (filters.college) sp.set('college', filters.college)
@@ -66,8 +68,12 @@ export default function CandidatesPage() {
     if (filters.status) sp.set('status', filters.status)
     if (filters.company) sp.set('company', filters.company)
     if (filters.role) sp.set('role', filters.role)
-    setSearchParams(sp, { replace: true })
-  }, [filters, setSearchParams])
+    const next = sp.toString()
+    const current = searchParams.toString()
+    if (next !== current) {
+      setSearchParams(sp, { replace: true })
+    }
+  }, [filters, searchParams, setSearchParams, location.pathname])
 
   return (
     <PageContainer>
