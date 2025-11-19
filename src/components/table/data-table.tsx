@@ -1,9 +1,18 @@
 import * as React from 'react'
-import { useReactTable, getCoreRowModel, flexRender, ColumnDef, getPaginationRowModel } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, ColumnDef, getPaginationRowModel, getSortedRowModel, SortingState } from '@tanstack/react-table'
 import { Table, THead, TBody, TR, TH, TD, TableContainer } from '@/components/ui/table'
 
 export function DataTable<T>({ columns, data }: { columns: ColumnDef<T, any>[], data: T[] }) {
-  const table = useReactTable({ columns, data, getCoreRowModel: getCoreRowModel(), getPaginationRowModel: getPaginationRowModel() })
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const table = useReactTable({
+    columns,
+    data,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
   return (
     <div className="space-y-3">
       <TableContainer>
@@ -13,7 +22,18 @@ export function DataTable<T>({ columns, data }: { columns: ColumnDef<T, any>[], 
               <TR key={hg.id}>
                 {hg.headers.map(header => (
                   <TH key={header.id}>
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.isPlaceholder ? null : (
+                      <button
+                        className="inline-flex items-center gap-1 hover:opacity-80"
+                        onClick={header.column.getToggleSortingHandler()}
+                        disabled={!header.column.getCanSort?.()}
+                        title={header.column.getCanSort?.() ? 'Toggle sort' : ''}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getIsSorted() === 'asc' && <span>▲</span>}
+                        {header.column.getIsSorted() === 'desc' && <span>▼</span>}
+                      </button>
+                    )}
                   </TH>
                 ))}
               </TR>

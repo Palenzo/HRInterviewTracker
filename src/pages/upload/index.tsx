@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx'
 import { useToast } from '@/context/ToastContext'
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { serverTimestamp } from '@/firebase'
 
 export default function UploadPage() {
     const [showHelp, setShowHelp] = React.useState(false)
@@ -62,6 +63,8 @@ export default function UploadPage() {
   const [headers, setHeaders] = React.useState<string[]>([])
   const [rows, setRows] = React.useState<any[][]>([])
   const [mapping, setMapping] = React.useState<Record<string, string>>({})
+  const [combineA, setCombineA] = React.useState<string>('')
+  const [combineB, setCombineB] = React.useState<string>('')
   const [loading, setLoading] = React.useState(false)
   const { toast } = useToast()
 
@@ -129,7 +132,13 @@ export default function UploadPage() {
           record[target] = row[i]
         })
         // Normalize a few fields for app pages to work out-of-the-box
-        const name = record['name'] || record['Candidate Full Name'] || record['Full Name']
+        let name = record['name'] || record['Candidate Full Name'] || record['Full Name']
+        if (!name && (combineA || combineB)) {
+          const a = combineA ? (row[headers.indexOf(combineA)] ?? '') : ''
+          const b = combineB ? (row[headers.indexOf(combineB)] ?? '') : ''
+          const merged = String(a || '').toString().trim() + (a && b ? ' ' : '') + String(b || '').toString().trim()
+          name = merged.trim() || name
+        }
         const email = record['email'] || record['Email ID'] || record['Email']
         const phone = record['phone'] || record['Contact No'] || record['Contact']
         const college = record['college'] || record['College Name'] || record['College']
@@ -139,12 +148,12 @@ export default function UploadPage() {
           email: email || record['email'] || '',
           phone: phone || record['phone'] || '',
           college: college || record['college'] || '',
-          status: record['status'] || 'Applied',
-          currentRound: record['currentRound'] || 'Aptitude',
+          // No default status or currentRound; allow empty
           resumeUrl: record['resumeUrl'] || record['Resume'] || record['Resume Link'] || record['resume'] || '',
           company,
           batch,
           role,
+          receivedAt: serverTimestamp(),
         }
         const clean = sanitize(candidateDoc)
         items.push(clean)
@@ -193,6 +202,51 @@ export default function UploadPage() {
           <CardContent>
             {headers.length ? (
               <div className="space-y-3">
+                <div className="rounded-xl border p-3">
+                  <div className="mb-2 text-sm font-medium">Combine into name (optional)</div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-slate-500 w-28">First</div>
+                      <select aria-label="First name column" className="grow rounded-xl border px-2 py-1 text-sm" value={combineA} onChange={(e)=> setCombineA(e.target.value)}>
+                        <option value="">-- none --</option>
+                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-slate-500 w-28">Last</div>
+                      <select aria-label="Last name column" className="grow rounded-xl border px-2 py-1 text-sm" value={combineB} onChange={(e)=> setCombineB(e.target.value)}>
+                        <option value="">-- none --</option>
+                        {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border p-3">
+                  <div className="mb-2 text-sm font-medium">Headers Summary</div>
+                  <div className="mb-2 text-xs text-slate-500">Review and tweak mappings quickly.</div>
+                  <div className="mb-2 max-h-40 overflow-auto rounded border">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left">
+                          <th className="px-2 py-1">Source Header</th>
+                          <th className="px-2 py-1">Mapped To</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {headers.map(h => (
+                          <tr key={h} className="border-t">
+                            <td className="px-2 py-1">{h}</td>
+                            <td className="px-2 py-1">{mapping[h] || h}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" onClick={() => setMapping(getAutoMapping(headers))}>Auto-map</Button>
+                    <Button variant="outline" onClick={() => setMapping(Object.fromEntries(headers.map(h=>[h,h])))}>Reset mapping</Button>
+                  </div>
+                </div>
                 {headers.map(h => (
                   <div key={h} className="flex items-center justify-between rounded-xl border p-2">
                     <div className="text-sm">{h}</div>
@@ -250,11 +304,11 @@ export default function UploadPage() {
             <li>email</li>
             <li>phone</li>
             <li>college</li>
-            <li>status (default: Applied)</li>
-            <li>currentRound (default: Aptitude)</li>
+            <li>status (optional)</li>
+            <li>currentRound (optional)</li>
             <li>resumeUrl (optional)</li>
           </ul>
-          <p>You can map your sheet columns to these fields on the right. During import, we will also tag each candidate with the Company, Batch, and Role you entered above.</p>
+          <p>You can map your sheet columns to these fields on the right, or optionally combine First/Last into a single name. During import, we will also tag each candidate with the Company, Batch, and Role you entered above.</p>
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={()=> setShowHelp(false)}>Close</Button>

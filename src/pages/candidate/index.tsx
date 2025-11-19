@@ -94,6 +94,11 @@ export default function CandidateProfilePage() {
                 <span className="ml-2 text-xs text-slate-500">Hidden: {hiddenForCollege.length}</span>
               )}
             </div>
+            {(candidate as any)?.company && <div className="text-sm text-slate-600">Company: {(candidate as any).company}</div>}
+            {(candidate as any)?.role && <div className="text-sm text-slate-600">Role: {(candidate as any).role}</div>}
+            {(candidate as any)?.receivedAt?.toDate && (
+              <div className="text-xs text-slate-500">Received: {new Date((candidate as any).receivedAt.toDate()).toLocaleString()}</div>
+            )}
             {(candidate as any)?.blacklisted && <div className="text-xs text-red-600">Blacklisted</div>}
           </CardContent>
         </Card>
