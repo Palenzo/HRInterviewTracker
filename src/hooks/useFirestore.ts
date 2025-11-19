@@ -1,14 +1,26 @@
 import * as React from 'react'
-import { collection, doc, onSnapshot, query as fsQuery, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, type QueryConstraint, QuerySnapshot } from 'firebase/firestore'
-import { db } from '@/firebase'
+import { collection, doc, onSnapshot, query as fsQuery, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, type QueryConstraint, QuerySnapshot, where } from 'firebase/firestore'
+import { db, auth } from '@/firebase'
 
-export function useCollection<T = any>(path: string, constraints: QueryConstraint[] = []) {
+export function useCollection<T = any>(path: string, constraints: QueryConstraint[] = [], options?: { scopeToUser?: boolean }) {
   const [data, setData] = React.useState<T[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<Error | null>(null)
 
   React.useEffect(() => {
-    const q = constraints.length ? fsQuery(collection(db, path), ...constraints) : collection(db, path)
+    const cons: QueryConstraint[] = [...constraints]
+    const scope = options?.scopeToUser !== false
+    const uid = auth.currentUser?.uid
+    // If scoping is enabled but user not yet available, wait for auth before subscribing
+    if (scope && !uid) {
+      setData([])
+      setLoading(true)
+      return
+    }
+    if (scope && uid) {
+      cons.push(where('ownerId','==', uid) as any)
+    }
+    const q = cons.length ? fsQuery(collection(db, path), ...cons) : collection(db, path)
     const unsub = onSnapshot(q as any, (snap: QuerySnapshot<any>) => {
       const arr = snap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) })) as T[]
       setData(arr)
@@ -18,7 +30,7 @@ export function useCollection<T = any>(path: string, constraints: QueryConstrain
       setLoading(false)
     })
     return () => unsub()
-  }, [path, JSON.stringify(constraints)])
+  }, [path, JSON.stringify(constraints), options?.scopeToUser, auth.currentUser?.uid])
 
   return { data, loading, error }
 }
@@ -32,8 +44,16 @@ export function useDocument<T = any>(path: string, id: string | undefined) {
     if (!id) { setLoading(false); setData(null); return }
     const ref = doc(collection(db, path), id)
     const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) setData({ id: snap.id, ...(snap.data() as any) } as T)
-      else setData(null)
+      if (snap.exists()) {
+        const data = { id: snap.id, ...(snap.data() as any) } as any
+        const uid = auth.currentUser?.uid
+        // Client-side guard: if document has ownerId and doesn't match current user, hide it
+        if (data.ownerId && uid && data.ownerId !== uid) {
+          setData(null)
+        } else {
+          setData(data as T)
+        }
+      } else setData(null)
       setLoading(false)
     }, (err) => { setError(err as any); setLoading(false) })
     return () => unsub()
@@ -42,14 +62,22 @@ export function useDocument<T = any>(path: string, id: string | undefined) {
   return { data, loading, error }
 }
 
+function withOwnerId<T>(item: T): T & { ownerId?: string } {
+  const uid = auth.currentUser?.uid
+  if (uid && !(item as any).ownerId) {
+    return { ...(item as any), ownerId: uid }
+  }
+  return item as any
+}
+
 export async function addItem<T = any>(path: string, item: T) {
-  const ref = await addDoc(collection(db, path), item as any)
+  const ref = await addDoc(collection(db, path), withOwnerId(item) as any)
   return ref.id
 }
 
 export async function setItem<T = any>(path: string, id: string, item: Partial<T>) {
   const ref = doc(collection(db, path), id)
-  await setDoc(ref, item as any, { merge: true })
+  await setDoc(ref, withOwnerId(item as any) as any, { merge: true })
 }
 
 export async function updateItem<T = any>(path: string, id: string, item: Partial<T>) {
@@ -70,7 +98,7 @@ export async function addItemsBatch<T = any>(path: string, items: T[], chunkSize
     const slice = items.slice(i, i + chunkSize)
     slice.forEach((item) => {
       const ref = doc(collection(db, path))
-      batch.set(ref, item as any)
+      batch.set(ref, withOwnerId(item) as any)
     })
     await batch.commit()
     total += slice.length

@@ -9,6 +9,12 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173, host: true },
+  build: {
+    modulePreload: {
+      // Avoid MutationObserver-based polyfill; modern browsers support modulepreload
+      polyfill: false
+    }
+  },
   preview: {
     host: true,
     // Render will pass PORT via the start script; we don't hardcode it here
