@@ -1,0 +1,52 @@
+# Node & package managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.vite/
+.cache/
+.parcel-cache/
+.temp/
+temp/
+tmp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage / reports
+coverage/
+reports/
+
+# Environment files (keep example)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+.history/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tool caches
+.eslintcache
+.stylelintcache
+
+# Firebase local state
+.firebase/
+
