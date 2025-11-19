@@ -7,7 +7,6 @@ import { type Candidate } from '@/types'
 import { StatusBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom'
-import { X } from 'lucide-react'
 import { useCollection } from '@/hooks/useFirestore'
 import { where } from 'firebase/firestore'
 
@@ -87,37 +86,7 @@ export default function CandidatesPage() {
           initial={filters}
           onChange={(f: { query: string; college: string; round: string; status: string; company: string; role: string })=> setFilters(f)}
         />
-        {/* Active filter chips */}
-        <div className="flex flex-wrap items-center gap-2">
-          {([['company','Company'],['role','Role'],['college','College'],['round','Round'],['status','Status']] as Array<[keyof typeof filters,string]>).map(([key,label])=>{
-            const val = (filters as any)[key]
-            if (!val) return null
-            return (
-              <button
-                key={String(key)}
-                className="inline-flex w-auto items-center gap-1 whitespace-nowrap rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-3 py-1 text-xs text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                onClick={()=> setFilters(prev=> ({ ...prev, [key]: '' }))}
-              >
-                <span className="text-slate-600">{label}:</span>
-                <span>{val}</span>
-                <X size={12} aria-hidden className="text-slate-500" />
-              </button>
-            )
-          })}
-          {filters.query && (
-            <button
-              className="inline-flex w-auto items-center gap-1 whitespace-nowrap rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-3 py-1 text-xs text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-              onClick={()=> setFilters(prev=> ({ ...prev, query: '' }))}
-            >
-              <span className="text-slate-600">Search:</span>
-              <span>{filters.query}</span>
-              <X size={12} aria-hidden className="text-slate-500" />
-            </button>
-          )}
-          {(filters.query || filters.college || filters.round || filters.status || filters.company || filters.role) && (
-            <button className="rounded-full border px-3 py-1 text-xs" onClick={()=> setFilters({ query: '', college: '', round: '', status: '', company: '', role: '' })}>Clear all</button>
-          )}
-        </div>
+        {/* Filters only (chips removed as requested) */}
         {loading ? <div>Loading...</div> : <DataTable columns={columns} data={data} />}
       </div>
     </PageContainer>

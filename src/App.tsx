@@ -1,5 +1,4 @@
 import { Route, Routes, useLocation, Navigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { AuthProvider } from '@/context/AuthContext'
@@ -14,17 +13,7 @@ import SchedulePage from '@/pages/schedule'
 import NotificationsPage from '@/pages/notifications'
 import AdminCollegesPage from '@/pages/admin/colleges'
 
-const Page = ({ children }: { children: React.ReactNode }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.25, ease: 'easeOut' }}
-    className="h-full"
-  >
-    {children}
-  </motion.div>
-)
+const Page = ({ children }: { children: React.ReactNode }) => <div className="h-full">{children}</div>
 
 export default function App() {
   const location = useLocation()
